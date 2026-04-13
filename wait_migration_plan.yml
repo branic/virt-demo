@@ -1,0 +1,35 @@
+---
+# Poll the MTV / Forklift Plan until the migration finishes successfully.
+# Configure auth via AAP (Kubernetes credential / KUBECONFIG / mtv_kubeconfig).
+# Optional extra vars: plan_name (default migration-plan), mtv_forklift_namespace
+# (default openshift-mtv), mtv_plan_wait_retries (default 360), mtv_plan_wait_delay (default 10).
+
+- name: Wait for MTV migration plan to complete
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Poll Forklift Plan until Succeeded or Failed
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Plan
+        name: "{{ plan_name | default('migration-plan') }}"
+        namespace: "{{ migration_namespace | default('openshift-mtv') }}"
+      register: mtv_plan_info
+      until: >-
+        (mtv_plan_info.resources | length > 0) and
+        (
+          mtv_plan_info.resources[0].status.conditions | default([])
+          | selectattr('type', 'equalto', 'Succeeded')
+          | map(attribute='status') | first | default('False') | lower == 'true'
+        )
+      retries: "{{ mtv_plan_wait_retries | default(360) | int }}"
+      delay: "{{ mtv_plan_wait_delay | default(20) | int }}"
+      failed_when: >-
+        (mtv_plan_info.resources | length > 0) and
+        (
+          mtv_plan_info.resources[0].status.conditions | default([])
+          | selectattr('type', 'equalto', 'Failed')
+          | map(attribute='status') | first | default('False') | lower == 'true'
+        )

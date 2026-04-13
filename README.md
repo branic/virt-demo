@@ -35,6 +35,7 @@ Root playbooks for an AAP workflow (pre → [ocp-virt migration](https://github.
 
 - [`pre_migration_checks.yml`](pre_migration_checks.yml) — For each VM in `user_selected_vm_names`: **exists in VMware** (`vmware.vmware_rest.vcenter_vm_info`) and **does not exist** as a KubeVirt `VirtualMachine` on OpenShift (`kubernetes.core.k8s_info`).
 - [`post_migration_checks.yml`](post_migration_checks.yml) — For each VM: **exists** as a KubeVirt `VirtualMachine` (`kubernetes.core.k8s_info`).
+- [`wait_migration_plan.yml`](wait_migration_plan.yml) — Polls the Forklift **`Plan`** CR until the **Succeeded** condition is true (or fails if **Failed** becomes true). Defaults: `plan_name` → `migration-plan`, `mtv_forklift_namespace` → `openshift-mtv`.
 
 The playbooks **do not define `vars:`**. Supply everything through the **job template** in Ansible Automation Platform: **credentials** (injected as variables on the job) and a **survey** / extra variables.
 
@@ -111,8 +112,8 @@ With `.venv` active and collections installed under `./collections`:
 ```bash
 export ANSIBLE_LOCAL_TEMP="$PWD/.ansible/tmp"
 mkdir -p "$ANSIBLE_LOCAL_TEMP"
-ansible-playbook --syntax-check pre_migration_checks.yml post_migration_checks.yml site.yml
-ansible-lint pre_migration_checks.yml post_migration_checks.yml site.yml \
+ansible-playbook --syntax-check pre_migration_checks.yml post_migration_checks.yml wait_migration_plan.yml site.yml
+ansible-lint pre_migration_checks.yml post_migration_checks.yml wait_migration_plan.yml site.yml \
   collections/ansible_collections/mtv_checks/demo/
-yamllint -d relaxed pre_migration_checks.yml post_migration_checks.yml site.yml
+yamllint -d relaxed pre_migration_checks.yml post_migration_checks.yml wait_migration_plan.yml site.yml
 ```

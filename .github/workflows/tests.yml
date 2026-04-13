@@ -42,9 +42,11 @@ jobs:
           mkdir -p "$ANSIBLE_LOCAL_TEMP"
           ansible-playbook --syntax-check pre_migration_checks.yml
           ansible-playbook --syntax-check post_migration_checks.yml
+          ansible-playbook --syntax-check wait_migration_plan.yml
           ansible-playbook --syntax-check site.yml
           ansible-lint \
             pre_migration_checks.yml \
             post_migration_checks.yml \
+            wait_migration_plan.yml \
             site.yml \
             collections/ansible_collections/mtv_checks/demo/
