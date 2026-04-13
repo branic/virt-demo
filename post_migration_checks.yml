@@ -1,0 +1,16 @@
+---
+# Post-migration: each VM exists on OCP as a KubeVirt VirtualMachine.
+# Configure the job template in AAP: attach OpenShift/Kubernetes credentials
+# and a survey; do not rely on variables defined in this playbook.
+#
+# Expected inputs (injected by AAP — see README):
+# - Survey (ocp-virt Basic Survey): provider_name, plan_name, storagemap_name,
+#   networkmap_name, user_selected_vm_names
+# - Credential / extra: mtv_kubevirt_namespace, mtv_kubeconfig
+
+- name: Post-migration checks (OpenShift present)
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: mtv_checks.demo.postcheck

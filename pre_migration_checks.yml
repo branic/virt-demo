@@ -1,0 +1,16 @@
+---
+# Pre-migration: each VM exists in VMware and is absent on OCP (KubeVirt VM).
+# Configure the job template in AAP: attach VMware + OpenShift/Kubernetes credentials
+# and a survey; do not rely on variables defined in this playbook.
+#
+# Expected inputs (injected by AAP — see README):
+# - Survey (ocp-virt Basic Survey): provider_name, plan_name, storagemap_name,
+#   networkmap_name, user_selected_vm_names
+# - Credential / extra: mtv_vcenter_*, mtv_kubevirt_namespace, mtv_kubeconfig
+
+- name: Pre-migration checks (VMware present, OpenShift absent)
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: mtv_checks.demo.precheck

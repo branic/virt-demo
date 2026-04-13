@@ -1,0 +1,51 @@
+---
+- name: Normalize VM names from survey textarea
+  ansible.builtin.set_fact:
+    postcheck_parsed_vm_names: >-
+      {{
+        (
+          (
+            (user_selected_vm_names | default('') | string)
+            | regex_replace('\r\n', ',')
+            | regex_replace('\n', ',')
+            | regex_replace('\r', ',')
+          )
+          | split(',')
+          | map('trim')
+          | reject('equalto', '')
+          | list
+          | unique
+        )
+      }}
+
+- name: Require at least one VM name from user_selected_vm_names
+  ansible.builtin.assert:
+    that:
+      - postcheck_parsed_vm_names | length > 0
+    fail_msg: >-
+      user_selected_vm_names must list at least one VM
+      (comma or newline separated).
+    quiet: true
+
+- name: Verify each VirtualMachine exists on OpenShift (read-only)
+  kubernetes.core.k8s_info:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    name: "{{ item }}"
+    namespace: "{{ migration_namespace | default('default') }}"
+  loop: "{{ postcheck_parsed_vm_names }}"
+  loop_control:
+    label: "{{ item }}"
+  register: postcheck_k8s
+
+- name: Assert VirtualMachine resources were found
+  ansible.builtin.assert:
+    that:
+      - item.resources | length > 0
+    fail_msg: >-
+      VirtualMachine '{{ item.item }}' not found on OpenShift
+      (verify migration_namespace and cluster credentials).
+    quiet: true
+  loop: "{{ postcheck_k8s.results }}"
+  loop_control:
+    label: "{{ item.item }}"

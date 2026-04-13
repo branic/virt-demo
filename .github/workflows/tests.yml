@@ -1,0 +1,50 @@
+---
+name: "CI"
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+on: # yamllint disable-line rule:truthy
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  # TO-DO: cron example — uncomment and tweak as needed
+  # schedule:
+    # - cron: '0 0 * * *'
+
+jobs:
+  ansible-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible tooling
+        run: pip install -r requirements-ansible.txt
+
+      - name: Install Galaxy collections for migration playbooks
+        run: >-
+          ansible-galaxy collection install
+          'vmware.vmware_rest:4.10.0' 'kubernetes.core:5.2.0'
+          -p collections
+
+      - name: Syntax check and ansible-lint
+        env:
+          ANSIBLE_LOCAL_TEMP: ${{ github.workspace }}/.ansible/tmp
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p "$ANSIBLE_LOCAL_TEMP"
+          ansible-playbook --syntax-check pre_migration_checks.yml
+          ansible-playbook --syntax-check post_migration_checks.yml
+          ansible-playbook --syntax-check site.yml
+          ansible-lint \
+            pre_migration_checks.yml \
+            post_migration_checks.yml \
+            site.yml \
+            collections/ansible_collections/mtv_checks/demo/

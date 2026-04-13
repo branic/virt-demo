@@ -1,0 +1,72 @@
+---
+- name: Normalize VM names from survey textarea
+  ansible.builtin.set_fact:
+    precheck_parsed_vm_names: >-
+      {{
+        (
+          (
+            (user_selected_vm_names | default('') | string)
+            | regex_replace('\r\n', ',')
+            | regex_replace('\n', ',')
+            | regex_replace('\r', ',')
+          )
+          | split(',')
+          | map('trim')
+          | reject('equalto', '')
+          | list
+          | unique
+        )
+      }}
+
+- name: Require at least one VM name from user_selected_vm_names
+  ansible.builtin.assert:
+    that:
+      - precheck_parsed_vm_names | length > 0
+    fail_msg: >-
+      user_selected_vm_names must list at least one VM
+      (comma or newline separated).
+    quiet: true
+
+- name: Verify each VM exists in vCenter (read-only, VMware REST)
+  vmware.vmware_rest.vcenter_vm_info:
+    names:
+      - "{{ item }}"
+  loop: "{{ precheck_parsed_vm_names }}"
+  loop_control:
+    label: "{{ item }}"
+  register: precheck_vmware_rest
+
+- name: Assert vCenter REST API returned each VM
+  ansible.builtin.assert:
+    that:
+      - item.value | default([]) | length > 0
+    fail_msg: >-
+      VM '{{ item.item }}' was not found in vCenter (VMware REST API returned
+      no matches).
+    quiet: true
+  loop: "{{ precheck_vmware_rest.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Confirm each VirtualMachine is absent on OpenShift (pre-migration)
+  kubernetes.core.k8s_info:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    name: "{{ item }}"
+    namespace: "{{ migration_namespace | default('default') }}"
+  loop: "{{ precheck_parsed_vm_names }}"
+  loop_control:
+    label: "{{ item }}"
+  register: precheck_k8s
+
+- name: Assert VirtualMachine does not exist yet on OpenShift
+  ansible.builtin.assert:
+    that:
+      - item.resources | length == 0
+    fail_msg: >-
+      VirtualMachine '{{ item.item }}' already exists on OpenShift
+      (expected absent before migration; verify migration_namespace).
+    quiet: true
+  loop: "{{ precheck_k8s.results }}"
+  loop_control:
+    label: "{{ item.item }}"

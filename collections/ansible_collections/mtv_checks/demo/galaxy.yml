@@ -1,0 +1,19 @@
+---
+namespace: mtv_checks
+name: demo
+readme: README.md
+version: 0.1.0
+authors:
+  - Brant Evans
+description: MTV migration pre and post check roles for AAP workflows
+license:
+  - GPL-3.0-or-later
+tags:
+  - infrastructure
+  - migration
+  - kubevirt
+  - vmware
+repository: NA
+dependencies:
+  "vmware.vmware_rest": ">=4.0.0"
+  "kubernetes.core": ">=4.0.0"
